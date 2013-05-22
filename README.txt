@@ -24,7 +24,7 @@ actual bootstrap are fetched via Internet.
 
 4. How to use DCburn
 
-1) write image to 512MB (or larger) USB flash memory via gzip(1) and dd(1)
+1) write image to 512MB (or larger) USB flash memory via gunzip(1) and dd(1)
    (or Rawrite32.exe tool for Windows),
     Rawrite32.exe tool can be found here:
     http://www.NetBSD.org/~martin/rawrite32/
@@ -39,10 +39,10 @@ actual bootstrap are fetched via Internet.
 
 5. Misc
 
-- DCburn image contains a raw binary GENERIC kernel of NetBSD/dreamcast
-  generated from official NetBSD 5.1 netbsd-GENERIC ELF binary by objcopy(1).
-- DCburn image also contains cdrtools-3.00.tgz packages binary for
-  NetBSD/i386 5.0.2 fetched from ftp.NetBSD.org.
+- DCburn for 6.1 will fetch a raw GENERIC.bin kernel binary from
+  the official ftp site.
+- DCburn for 6.1 will also fetch cdrtools packages binary from
+  the official ftp site to pkg_add(1) it.
 
 
 6. Changes
@@ -52,6 +52,9 @@ actual bootstrap are fetched via Internet.
 
 20101121:
  - Fix hostname from dcserv to dcburn (yes, bad pasto...)
+
+20130522:
+ - Update for NetBSD 6.1.
 
 ---
 Izumi Tsutsui
