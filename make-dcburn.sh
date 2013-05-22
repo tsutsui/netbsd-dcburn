@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2009, 2010 Izumi Tsutsui.  All rights reserved.
+# Copyright (c) 2009, 2010, 2013 Izumi Tsutsui.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,7 +23,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 PROG=dcburn
-VERSION=20101128
+VERSION=20130522
 
 MACHINE=i386
 
@@ -91,32 +91,6 @@ if [ ! -x ${TOOLDIR}/bin/nbdisklabel-${MACHINE} ]; then
 	echo 'build tools for dcburn host first'; exit 1
 fi
 
-MACHINE_ARCH_DC=sh3el
-MACHINE_DC=dreamcast
-MACHINE_DC_GNU_PLATFORM=shle--netbsdelf
-
-TOOLDIR_DC=/usr/tools/${MACHINE_ARCH_DC}
-if [ -z ${TOOLDIR_DC} ]; then
-	_HOST_OSNAME=`uname -s`
-	_HOST_OSREL=`uname -r`
-	_HOST_ARCH=`uname -p 2> /dev/null || uname -m`
-	TOOLDIRNAME=tooldir.${_HOST_OSNAME}-${_HOST_OSREL}-${_HOST_ARCH}
-	TOOLDIR_DC=${NETBSDSRCDIR}/obj.${MACHINE_DC}/${TOOLDIRNAME}
-	if [ ! -d ${TOOLDIR_DC} ]; then
-		TOOLDIR_DC=${NETBSDSRCDIR}/${TOOLDIRNAME}
-	fi
-fi
-
-if [ ! -d ${TOOLDIR_DC} ]; then
-	echo 'set TOOLDIR_DC for dreamcast first'; exit 1
-fi
-
-OBJCOPY_DC=${TOOLDIR_DC}/bin/${MACHINE_DC_GNU_PLATFORM}-objcopy
-if [ ! -x ${OBJCOPY_DC} ]; then
-	echo 'build tools for dreamcast first'; exit 1
-fi
-
-
 #
 # info about ftp to get binary sets
 #
@@ -124,10 +98,10 @@ FTPHOST=ftp.NetBSD.org
 #FTPHOST=ftp.jp.NetBSD.org
 #FTPHOST=ftp7.jp.NetBSD.org
 #FTPHOST=nyftp.NetBSD.org
-RELEASE=5.1
+RELEASE=6.1
 RELEASEDIR=pub/NetBSD/NetBSD-${RELEASE}
 #RELEASEDIR=pub/NetBSD-daily/HEAD/201011130000Z
-PKG_RELEASE=5.0
+PKG_RELEASE=6.1
 PACKAGESDIR=pub/pkgsrc/packages/NetBSD/${MACHINE_ARCH}/${PKG_RELEASE}
 
 #
@@ -167,30 +141,28 @@ IMAGEMB=480			# ~ 512 * 1000 * 1000 B
 #SWAPMB=256			# 256MB
 #SWAPMB=128			# 128MB
 SWAPMB=64			# 64MB
-IMAGESECTORS=`expr ${IMAGEMB} \* 1024 \* 1024 / 512`
-SWAPSECTORS=`expr ${SWAPMB} \* 1024 \* 1024 / 512`
+IMAGESECTORS=$((${IMAGEMB} * 1024 * 1024 / 512))
+SWAPSECTORS=$((${SWAPMB} * 1024 * 1024 / 512))
 
 LABELSECTORS=0
 if [ "${USE_MBR}" = "yes" ]; then
 #	LABELSECTORS=63		# historical
 	LABELSECTORS=32		# aligned?
 fi
-BSDPARTSECTORS=`expr ${IMAGESECTORS} - ${LABELSECTORS}`
-FSSECTORS=`expr ${IMAGESECTORS} - ${SWAPSECTORS} - ${LABELSECTORS}`
+BSDPARTSECTORS=$((${IMAGESECTORS} - ${LABELSECTORS}))
+FSSECTORS=$((${IMAGESECTORS} - ${SWAPSECTORS} - ${LABELSECTORS}))
 FSOFFSET=${LABELSECTORS}
-SWAPOFFSET=`expr ${LABELSECTORS} + ${FSSECTORS}`
-FSSIZE=`expr ${FSSECTORS} \* 512`
+SWAPOFFSET=$((${LABELSECTORS} + ${FSSECTORS}))
+FSSIZE=$((${FSSECTORS} * 512))
 HEADS=64
 SECTORS=32
-CYLINDERS=`expr ${IMAGESECTORS} / \( ${HEADS} \* ${SECTORS} \)`
-FSCYLINDERS=`expr ${FSSECTORS} / \( ${HEADS} \* ${SECTORS} \)`
-SWAPCYLINDERS=`expr ${SWAPSECTORS} / \( ${HEADS} \* ${SECTORS} \)`
-MBRCYLINDERS=`expr ${IMAGESECTORS} / 255 / 63`
+CYLINDERS=$((${IMAGESECTORS} / ( ${HEADS} * ${SECTORS} ) ))
+FSCYLINDERS=$((${FSSECTORS} / ( ${HEADS} * ${SECTORS} ) ))
+SWAPCYLINDERS=$((${SWAPSECTORS} / ( ${HEADS} * ${SECTORS} ) ))
+MBRCYLINDERS=$((${IMAGESECTORS} / 255 / 63))
 
 KERNEL=netbsd-GENERIC
 KERNEL_BIN=${KERNEL}.bin
-
-CDRTOOLS_PKG=cdrtools-3.00.tgz
 
 #
 # get binary sets
@@ -205,20 +177,6 @@ for set in ${SETS}; do
 		    -o ${DOWNLOADDIR}/${set}.tgz ${URL_SETS}/${set}.tgz
 	fi
 done
-
-URL_DCKERN=ftp://${FTPHOST}/${RELEASEDIR}/${MACHINE_DC}/binary/kernel
-if [ ! -f ${DOWNLOADDIR}/${KERNEL}.gz ]; then
-	echo Fetching ${KERNEL}.gz...
-	${FTP} ${FTP_OPTIONS} \
-	    -o ${DOWNLOADDIR}/${KERNEL}.gz ${URL_DCKERN}/${KERNEL}.gz
-fi
-
-URL_PKGS=ftp://${FTPHOST}/${PACKAGESDIR}/All
-if [ ! -f ${DOWNLOADDIR}/${CDRTOOLS_PKG} ]; then
-	echo Fetching ${CDRTOOLS_PKG}...
-	${FTP} ${FTP_OPTIONS} \
-	    -o ${DOWNLOADDIR}/${CDRTOOLS_PKG} ${URL_PKGS}/${CDRTOOLS_PKG}
-fi
 
 #
 # create targetroot
@@ -293,11 +251,6 @@ timeout=10
 EOF
 ${CP} ${WORKDIR}/boot.cfg ${TARGETROOTDIR}
 
-echo Preparing raw dreacmast GENERIC kernel...
-${GZIP} -dc ${DOWNLOADDIR}/${KERNEL}.gz > ${WORKDIR}/${KERNEL}
-${OBJCOPY_DC} -O binary ${WORKDIR}/${KERNEL} ${WORKDIR}/${KERNEL_BIN}
-${CP} ${WORKDIR}/${KERNEL_BIN} ${TARGETROOTDIR}/root
-
 echo Preparing dcburn Makefile...
 ${CAT} > ${WORKDIR}/Makefile <<EOF
 # A dumb Makefile which create bootable CD-R without file system
@@ -306,6 +259,7 @@ FTP_HOST?=ftp.NetBSD.org
 FTP_PATH=pub/NetBSD/NetBSD-${RELEASE}
 KERNEL?=${KERNEL}
 KERNEL_BIN?=\${KERNEL}.bin
+PACKAGESDIR=pub/pkgsrc/packages/NetBSD/${MACHINE_ARCH}/${PKG_RELEASE}
 
 SCRAMBLE_C_URL?=http://mc.pp.se/dc/files/scramble.c
 MAKEIP_TAR_GZ_URL?=http://mc.pp.se/dc/files/makeip.tar.gz
@@ -325,7 +279,6 @@ CDRDEV?= /dev/rcd0d
 CDRSPEED?= 16
 #CDRSPEED= 4
 
-CDRTOOLS_PKG=	${CDRTOOLS_PKG}
 MKISOFS= /usr/pkg/bin/mkisofs
 CDRECORD= /usr/pkg/bin/cdrecord
 CDRECORD_OPT= -dev=\${CDRDEV} -speed=\${CDRSPEED} driveropts=burnfree
@@ -348,20 +301,17 @@ scramble.c:
 scramble: scramble.c
 	\${CC} -O -o \${.TARGET} scramble.c
 
-#\${KERNEL}.gz:
-#	\${FTP} ftp://\${FTP_HOST}/\${FTP_PATH}/dreamcast/binary/kernel/\${.TARGET}
-#
-#\${KERNEL}: \${KERNEL}.gz
-#	\${GZIP} -dc \${KERNEL}.gz > \${KERNEL}
-#
-#\${KERNEL_BIN}: \${KERNEL}
-#	\${OBJCOPY} -O binary \${KERNEL} \${KERNEL_BIN}
+\${KERNEL_BIN}.gz:
+	\${FTP} ftp://\${FTP_HOST}/\${FTP_PATH}/dreamcast/binary/kernel/\${.TARGET}
+
+\${KERNEL_BIN}: \${KERNEL_BIN}.gz
+	\${GZIP} -dc \${KERNEL_BIN}.gz > \${KERNEL_BIN}
 
 1ST_READ.BIN: scramble \${KERNEL_BIN}
 	./scramble \${KERNEL_BIN} \${.TARGET}
 
-\${MKISOFS} \${CDRECORD}: \${CDRTOOLS_PKG}
-	pkg_add \${CDRTOOLS_PKG}
+\${MKISOFS} \${CDRECORD}:
+	pkg_add ftp://\${FTP_HOST}/\${PACKAGESDIR}/All/cdrtools
 
 data.iso: \${MKISOFS} 1ST_READ.BIN
 	\${MKISOFS} -R -l -C 0,11702 -o \${.TARGET} 1ST_READ.BIN
@@ -382,18 +332,14 @@ clean:
 	rm -f IP.BIN
 	rm -f makeip scramble
 	rm -f IP.TMPL ip.txt makeip.c
-#	rm -f \${KERNEL_BIN}
 
 cleandir:
 	\${MAKE} clean
 	rm -f scramble.c
 	rm -f makeip.tar.gz
-#	rm -f \${KERNEL_BIN}.gz
+	rm -f \${KERNEL_BIN}.gz
 EOF
 ${CP} ${WORKDIR}/Makefile ${TARGETROOTDIR}/root
-
-echo Preparing cdrtools packages...
-${CP} ${DOWNLOADDIR}/${CDRTOOLS_PKG} ${TARGETROOTDIR}/root
 
 echo Preparing spec file for makefs...
 # files for DCserv host
@@ -417,8 +363,6 @@ ${CAT} >> ${WORKDIR}/spec.${MACHINE} <<EOF
 ./proc				type=dir  mode=0755
 ./tmp				type=dir  mode=1777
 ./root/Makefile			type=file mode=0644
-./root/${CDRTOOLS_PKG}		type=file mode=0644
-./root/${KERNEL}.bin		type=file mode=0755
 EOF
 
 ${MV} ${WORKDIR}/spec.${MACHINE} ${WORKDIR}/spec
@@ -438,7 +382,7 @@ ${TOOLDIR}/bin/nbinstallboot -v -m ${MACHINE} ${WORKDIR}/rootfs \
     ${TARGETROOTDIR}/usr/mdec/${PRIMARY_BOOT} ${SECONDARY_BOOT_ARG}
 
 echo Creating swap fs
-${DD} if=/dev/zero of=${WORKDIR}/swap count=${SWAPSECTORS}
+${DD} if=/dev/zero of=${WORKDIR}/swap seek=$((${SWAPSECTORS} - 1)) count=1
 
 echo Copying target disk image...
 if [ ${LABELSECTORS} != 0 ]; then
@@ -467,7 +411,7 @@ flags:
 bytes/sector: 512
 sectors/track: ${SECTORS}
 tracks/cylinder: ${HEADS}
-sectors/cylinder: `expr ${HEADS} \* ${SECTORS}`
+sectors/cylinder: $((${HEADS} * ${SECTORS}))
 cylinders: ${CYLINDERS}
 total sectors: ${IMAGESECTORS}
 rpm: 3600
