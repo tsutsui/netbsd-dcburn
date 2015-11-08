@@ -24,7 +24,7 @@ DCburn - ブート可能な NetBSD/dreamcast CD-R 作成キット
 
 4. DCburn の使い方
 
-1) 512MB (以上) の USB フラッシュメモリーに、
+1) 1GB (以上) の USB フラッシュメモリーに、
     このイメージを、gunzip(1) と dd(1) を使って書き込みます
    (Windows 用の Rawrite32.exe ツールも使えます)。
     Rawrite32.exe ツールは以下のサイトにあります:
@@ -40,9 +40,9 @@ DCburn - ブート可能な NetBSD/dreamcast CD-R 作成キット
 
 5. その他
 
-- 6.1版の DCburn は、raw バイナリーの GENERIC.bin カーネルを公式ftpサイトから
+- 7.0版の DCburn は、raw バイナリーの GENERIC.bin カーネルを公式ftpサイトから
   ダウンロードします。
-- 同様に6.1版の DCburn は、 cdrtools バイナリーパッケージを pkg_add(1) するために
+- 同様に7.0版の DCburn は、 cdrtools バイナリーパッケージを pkg_add(1) するために
   公式ftpサイトからダウンロードします。
 
 
@@ -56,6 +56,9 @@ DCburn - ブート可能な NetBSD/dreamcast CD-R 作成キット
 
 20130522:
  - NetBSD 6.1 用に更新
+ 
+20151122:
+ - NetBSD 7.0 用に更新
  
 ---
 Izumi Tsutsui

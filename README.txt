@@ -24,7 +24,7 @@ actual bootstrap are fetched via Internet.
 
 4. How to use DCburn
 
-1) write image to 512MB (or larger) USB flash memory via gunzip(1) and dd(1)
+1) write image to 1GB (or larger) USB flash memory via gunzip(1) and dd(1)
    (or Rawrite32.exe tool for Windows),
     Rawrite32.exe tool can be found here:
     http://www.NetBSD.org/~martin/rawrite32/
@@ -39,9 +39,9 @@ actual bootstrap are fetched via Internet.
 
 5. Misc
 
-- DCburn for 6.1 will fetch a raw GENERIC.bin kernel binary from
+- DCburn for 7.0 will fetch a raw GENERIC.bin kernel binary from
   the official ftp site.
-- DCburn for 6.1 will also fetch cdrtools packages binary from
+- DCburn for 7.0 will also fetch cdrtools packages binary from
   the official ftp site to pkg_add(1) it.
 
 
@@ -55,6 +55,9 @@ actual bootstrap are fetched via Internet.
 
 20130522:
  - Update for NetBSD 6.1.
+
+20151122:
+ - Update for NetBSD 7.0.
 
 ---
 Izumi Tsutsui

@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (c) 2009, 2010, 2013 Izumi Tsutsui.  All rights reserved.
+# Copyright (c) 2009, 2010, 2013, 2015 Izumi Tsutsui.  All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,7 +23,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 PROG=dcburn
-VERSION=20130522
+VERSION=20151122
 
 MACHINE=i386
 
@@ -67,7 +67,8 @@ fi
 # tooldir settings
 #
 #NETBSDSRCDIR=/usr/src
-TOOLDIR=/usr/tools/${MACHINE_ARCH}
+#NETBSDSRCDIR=/s/src
+#TOOLDIR=/usr/tools/${MACHINE_ARCH}
 
 if [ -z ${NETBSDSRCDIR} ]; then
 	NETBSDSRCDIR=/usr/src
@@ -87,7 +88,7 @@ fi
 if [ ! -d ${TOOLDIR} ]; then
 	echo 'set TOOLDIR for dcburn host first'; exit 1
 fi
-if [ ! -x ${TOOLDIR}/bin/nbdisklabel-${MACHINE} ]; then
+if [ ! -x ${TOOLDIR}/bin/nbmake-${MACHINE} ]; then
 	echo 'build tools for dcburn host first'; exit 1
 fi
 
@@ -98,10 +99,10 @@ FTPHOST=ftp.NetBSD.org
 #FTPHOST=ftp.jp.NetBSD.org
 #FTPHOST=ftp7.jp.NetBSD.org
 #FTPHOST=nyftp.NetBSD.org
-RELEASE=6.1
+RELEASE=7.0
 RELEASEDIR=pub/NetBSD/NetBSD-${RELEASE}
 #RELEASEDIR=pub/NetBSD-daily/HEAD/201011130000Z
-PKG_RELEASE=6.1
+PKG_RELEASE=7.0
 PACKAGESDIR=pub/pkgsrc/packages/NetBSD/${MACHINE_ARCH}/${PKG_RELEASE}
 
 #
@@ -111,7 +112,7 @@ CAT=cat
 CKSUM=cksum
 CP=cp
 DD=dd
-DISKLABEL=${TOOLDIR}/bin/nbdisklabel-${MACHINE}
+DISKLABEL=${TOOLDIR}/bin/nbdisklabel
 FDISK=${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-fdisk
 FTP=ftp
 #FTP=lukemftp
@@ -136,8 +137,7 @@ IMAGE=${WORKDIR}/${MACHINE}.img
 #
 #IMAGEMB=3840			# for "4GB" USB memory
 #IMAGEMB=1880			# for "2GB" USB memory
-#IMAGEMB=512			# 512MB
-IMAGEMB=480			# ~ 512 * 1000 * 1000 B
+IMAGEMB=640			# 640MB for 7.0 base distribution
 #SWAPMB=256			# 256MB
 #SWAPMB=128			# 128MB
 SWAPMB=64			# 64MB
@@ -147,7 +147,8 @@ SWAPSECTORS=$((${SWAPMB} * 1024 * 1024 / 512))
 LABELSECTORS=0
 if [ "${USE_MBR}" = "yes" ]; then
 #	LABELSECTORS=63		# historical
-	LABELSECTORS=32		# aligned?
+#	LABELSECTORS=32		# aligned
+	LABELSECTORS=2048	# aligned 1MiB for modern flash
 fi
 BSDPARTSECTORS=$((${IMAGESECTORS} - ${LABELSECTORS}))
 FSSECTORS=$((${IMAGESECTORS} - ${SWAPSECTORS} - ${LABELSECTORS}))
@@ -159,7 +160,17 @@ SECTORS=32
 CYLINDERS=$((${IMAGESECTORS} / ( ${HEADS} * ${SECTORS} ) ))
 FSCYLINDERS=$((${FSSECTORS} / ( ${HEADS} * ${SECTORS} ) ))
 SWAPCYLINDERS=$((${SWAPSECTORS} / ( ${HEADS} * ${SECTORS} ) ))
-MBRCYLINDERS=$((${IMAGESECTORS} / 255 / 63))
+
+# fdisk(8) parameters
+MBRSECTORS=63
+MBRHEADS=255
+MBRCYLINDERS=$((${IMAGESECTORS} / ( ${MBRHEADS} * ${MBRSECTORS} ) ))
+MBRNETBSD=169
+
+# makefs(8) parameters
+BLOCKSIZE=16384
+FRAGSIZE=2048
+DENSITY=8192
 
 KERNEL=netbsd-GENERIC
 KERNEL_BIN=${KERNEL}.bin
@@ -259,7 +270,10 @@ FTP_HOST?=ftp.NetBSD.org
 FTP_PATH=pub/NetBSD/NetBSD-${RELEASE}
 KERNEL?=${KERNEL}
 KERNEL_BIN?=\${KERNEL}.bin
+PACKAGES_HOST?=ftp.NetBSD.org
 PACKAGESDIR=pub/pkgsrc/packages/NetBSD/${MACHINE_ARCH}/${PKG_RELEASE}
+#PACKAGES_HOST=teokurebsd.org
+#PACKAGESDIR=netbsd/packages/${MACHINE_ARCH}/${PKG_RELEASE}
 
 SCRAMBLE_C_URL?=http://mc.pp.se/dc/files/scramble.c
 MAKEIP_TAR_GZ_URL?=http://mc.pp.se/dc/files/makeip.tar.gz
@@ -311,7 +325,7 @@ scramble: scramble.c
 	./scramble \${KERNEL_BIN} \${.TARGET}
 
 \${MKISOFS} \${CDRECORD}:
-	pkg_add ftp://\${FTP_HOST}/\${PACKAGESDIR}/All/cdrtools
+	pkg_add http://\${PACKAGES_HOST}/\${PACKAGESDIR}/All/cdrtools
 
 data.iso: \${MKISOFS} 1ST_READ.BIN
 	\${MKISOFS} -R -l -C 0,11702 -o \${.TARGET} 1ST_READ.BIN
@@ -370,7 +384,7 @@ ${MV} ${WORKDIR}/spec.${MACHINE} ${WORKDIR}/spec
 echo Creating rootfs...
 ${TOOLDIR}/bin/nbmakefs -M ${FSSIZE} -B ${TARGET_ENDIAN} \
 	-F ${WORKDIR}/spec -N ${TARGETROOTDIR}/etc \
-	-o bsize=16384,fsize=2048,density=8192 \
+	-o bsize=${BLOCKSIZE},fsize=${FRAGSIZE},density=${DENSITY} \
 	${WORKDIR}/rootfs ${TARGETROOTDIR}
 if [ ! -f ${WORKDIR}/rootfs ]; then
 	echo Failed to create rootfs. Aborted.
@@ -396,8 +410,8 @@ fi
 if [ ${LABELSECTORS} != 0 ]; then
 	echo creating MBR labels...
 	${FDISK} -f -u \
-	    -b ${MBRCYLINDERS}/255/63 \
-	    -0 -a -s 169/${FSOFFSET}/${BSDPARTSECTORS} \
+	    -b ${MBRCYLINDERS}/${MBRHEADS}/${MBRSECTORS} \
+	    -0 -a -s ${MBRNETBSD}/${FSOFFSET}/${BSDPARTSECTORS} \
 	    -i -c ${TARGETROOTDIR}/usr/mdec/mbr \
 	    -F ${IMAGE}
 fi
@@ -424,13 +438,13 @@ drivedata: 0
 
 8 partitions:
 #        size    offset     fstype [fsize bsize cpg/sgs]
-a:    ${FSSECTORS} ${FSOFFSET} 4.2BSD 1024 8192 16
+a:    ${FSSECTORS} ${FSOFFSET} 4.2BSD ${FRAGSIZE} ${BLOCKSIZE} 128
 b:    ${SWAPSECTORS} ${SWAPOFFSET} swap
 c:    ${BSDPARTSECTORS} ${FSOFFSET} unused 0 0
 d:    ${IMAGESECTORS} 0 unused 0 0
 EOF
 
-${DISKLABEL} -R -F ${IMAGE} ${WORKDIR}/labelproto
+${DISKLABEL} -R -M ${MACHINE} -F ${IMAGE} ${WORKDIR}/labelproto
 
 echo Creating gzipped image...
 ${GZIP} -9c ${WORKDIR}/${MACHINE}.img > ${WORKDIR}/${PROG}-${VERSION}.img.gz.tmp
