@@ -60,6 +60,9 @@ DCburn - ブート可能な NetBSD/dreamcast CD-R 作成キット
 20151122:
  - NetBSD 7.0 用に更新
  
+20181130:
+ - NetBSD 8.0 用に更新
+ 
 ---
 Izumi Tsutsui
 tsutsui@NetBSD.org

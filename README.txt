@@ -59,6 +59,9 @@ actual bootstrap are fetched via Internet.
 20151122:
  - Update for NetBSD 7.0.
 
+20181130:
+ - Update for NetBSD 8.0.
+
 ---
 Izumi Tsutsui
 tsutsui@NetBSD.org

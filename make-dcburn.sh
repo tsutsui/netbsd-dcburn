@@ -1,6 +1,7 @@
 #! /bin/sh
 #
-# Copyright (c) 2009, 2010, 2013, 2015 Izumi Tsutsui.  All rights reserved.
+# Copyright (c) 2009, 2010, 2013, 2015, 2018 Izumi Tsutsui.
+# All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,7 +24,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 PROG=dcburn
-VERSION=20151122
+VERSION=20181130
 
 MACHINE=i386
 
@@ -95,14 +96,15 @@ fi
 #
 # info about ftp to get binary sets
 #
-FTPHOST=ftp.NetBSD.org
+FTPHOST=cdn.NetBSD.org
+#FTPHOST=ftp.NetBSD.org
 #FTPHOST=ftp.jp.NetBSD.org
 #FTPHOST=ftp7.jp.NetBSD.org
 #FTPHOST=nyftp.NetBSD.org
-RELEASE=7.0
+RELEASE=8.0
 RELEASEDIR=pub/NetBSD/NetBSD-${RELEASE}
 #RELEASEDIR=pub/NetBSD-daily/HEAD/201011130000Z
-PKG_RELEASE=7.0
+PKG_RELEASE=8.0
 PACKAGESDIR=pub/pkgsrc/packages/NetBSD/${MACHINE_ARCH}/${PKG_RELEASE}
 
 #
@@ -137,7 +139,7 @@ IMAGE=${WORKDIR}/${MACHINE}.img
 #
 #IMAGEMB=3840			# for "4GB" USB memory
 #IMAGEMB=1880			# for "2GB" USB memory
-IMAGEMB=640			# 640MB for 7.0 base distribution
+IMAGEMB=900			# 900MB for 8.0 base distribution
 #SWAPMB=256			# 256MB
 #SWAPMB=128			# 128MB
 SWAPMB=64			# 64MB
@@ -178,7 +180,7 @@ KERNEL_BIN=${KERNEL}.bin
 #
 # get binary sets
 #
-URL_SETS=ftp://${FTPHOST}/${RELEASEDIR}/${MACHINE}/binary/sets
+URL_SETS=http://${FTPHOST}/${RELEASEDIR}/${MACHINE}/binary/sets
 SETS="${KERN_SET} base etc comp ${EXTRA_SETS}"
 ${MKDIR} -p ${DOWNLOADDIR}
 for set in ${SETS}; do
@@ -266,11 +268,11 @@ echo Preparing dcburn Makefile...
 ${CAT} > ${WORKDIR}/Makefile <<EOF
 # A dumb Makefile which create bootable CD-R without file system
 
-FTP_HOST?=ftp.NetBSD.org
+FTP_HOST?=cdn.NetBSD.org
 FTP_PATH=pub/NetBSD/NetBSD-${RELEASE}
 KERNEL?=${KERNEL}
 KERNEL_BIN?=\${KERNEL}.bin
-PACKAGES_HOST?=ftp.NetBSD.org
+PACKAGES_HOST?=cdn.NetBSD.org
 PACKAGESDIR=pub/pkgsrc/packages/NetBSD/${MACHINE_ARCH}/${PKG_RELEASE}
 #PACKAGES_HOST=teokurebsd.org
 #PACKAGESDIR=netbsd/packages/${MACHINE_ARCH}/${PKG_RELEASE}
@@ -316,7 +318,7 @@ scramble: scramble.c
 	\${CC} -O -o \${.TARGET} scramble.c
 
 \${KERNEL_BIN}.gz:
-	\${FTP} ftp://\${FTP_HOST}/\${FTP_PATH}/dreamcast/binary/kernel/\${.TARGET}
+	\${FTP} http://\${FTP_HOST}/\${FTP_PATH}/dreamcast/binary/kernel/\${.TARGET}
 
 \${KERNEL_BIN}: \${KERNEL_BIN}.gz
 	\${GZIP} -dc \${KERNEL_BIN}.gz > \${KERNEL_BIN}
@@ -337,8 +339,8 @@ audio.raw:
 	dd if=/dev/zero bs=2352 count=300 of=\${.TARGET}
 
 bootcd:	\${CDRECORD} data.raw audio.raw
-	\${CDRECORD} \${CDRECORD_OPT} -multi -audio audio.raw
-	\${CDRECORD} \${CDRECORD_OPT} -multi -xa data.raw
+	\${CDRECORD} \${CDRECORD_OPT} -multi -tao -audio audio.raw
+	\${CDRECORD} \${CDRECORD_OPT} -multi -tao -xa data.raw
 	# see cdrecord(1) man page about -xa vs -xa1 options
 
 clean:
